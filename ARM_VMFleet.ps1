@@ -140,14 +140,21 @@ if($initialise.IsPresent){
     Write-Host "- creating key vault" -ForegroundColor Yellow
     New-AzKeyVault -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -Location $location -ErrorAction Stop
 
-    # Creator / owner gets all key vault access policies by default
+    # Creator / owner can set all access policies, but we need to set the current user to have explicit access to the key vault
     Write-Host "- setting access policy for $((get-azcontext).Account.Id) on key vault"  -ForegroundColor Yellow
-    Set-AzKeyVaultAccessPolicy -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -EmailAddress $((get-azcontext).Account.Id) -PermissionsToKeys create,import,delete,list -PermissionsToSecrets set,delete,List -PassThru
+    Set-AzKeyVaultAccessPolicy -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -EmailAddress $((get-azcontext).Account.Id) -PermissionsToKeys get,create,import,delete,list,update -PermissionsToSecrets get,set,delete,list,recover,backup,restore,purge -PassThru
     
     Write-Host "- adding secrets to key vault..." -ForegroundColor Yellow
-    Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'password' -SecretValue $cred.Password | Out-Null
-    Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'username' -SecretValue $cred.UserName | Out-Null
+    # ConvertTo-SecureString -AsPlainText -Force
+    $Password = ConvertTo-SecureString -String $cred.Password -AsPlainText -Force
+    # Add secret to key vault
+    Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'password' -SecretValue $Password | Out-Null
+    # ConvertTo-SecureString -AsPlainText -Force
+    $Username = ConvertTo-SecureString -String $cred.Username -AsPlainText -Force
+    # Add secret to key vault
+    Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'username' -SecretValue $Username | Out-Null
     $accKey = Get-AzStorageAccountKey -ResourceGroupName $resultsStorageAccountRg -AccountName $resultsStorageAccountName -ErrorAction Stop
+    # Add storage key to key vault
     Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'storageKey' -SecretValue (ConvertTo-SecureString $accKey.Value[0] -AsPlainText -Force)
 
     Write-Host "Resources ready for ARM VM Fleet automation..."-ForegroundColor Yellow
