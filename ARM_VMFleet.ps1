@@ -409,7 +409,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             # Install DSC Extension to run custom DSC resource:
             $dscResult = Set-AzVMDscExtension -Name Microsoft.Powershell.DSC -ArchiveBlobName 'DiskPrepTest.ps1.zip' `
             -ArchiveStorageAccountName $resultsStorageAccountName -ArchiveContainerName "$artifactsContainerName" `
-            -ArchiveResourceGroupName $resultsStorageAccountRg -ResourceGroupName $resourceGroup -Version 2.77 -VMName $vmName `
+            -ArchiveResourceGroupName $resultsStorageAccountRg -ResourceGroupName $resourceGroup -Version 2.83 -VMName $vmName `
             -ConfigurationArgument $dscConfigParams -ConfigurationName DiskPrepAndTest -ErrorVariable dscErrorOutput -OutVariable dscOutput -Verbose -AutoUpdate
                     
             if($dscErrorOutput){
@@ -460,5 +460,5 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
 Write-Host "$(Get-Date -Format 'yyyy-M-d HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...."
 
-# PowerShell jobs hold the status and individual log files are created in $logfilefolder (defaults to "C:\ARM-VMFleet-Logs\") per VM
+# PowerShell jobs hold the status and individual log files are created in $logfilefolder, which defaults to "C:\ARM-VMFleet-Logs\", per VM.
 Get-Job | Wait-Job | Receive-Job

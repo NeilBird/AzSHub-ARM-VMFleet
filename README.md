@@ -19,6 +19,17 @@ For testing Windows Server Hyper-Converged environments that do not have a local
 
 The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page will be updated periodically, but no SLA on time scales. Please raise a new [issue](https://github.com/NeilBird/AzSHub-ARM-VMFleet/issues) if identified, or submit a PR if you want to contribute to this project.
 
+## Instructions
+
+**Prerequisites**:
+
+1. Requires access to a physical Azure Stack Hub scale unit, do not run this tool on a virtual ASDK instance. Requires access to a user account with permissions to [update Quotas](https://learn.microsoft.com/azure-stack/operator/azure-stack-quota-types) using the Administrator Portal or Admin ARM Endpoint, as per item 2 below:
+1. Update the **"Services and quotas"** in the Plan that is linked to the Offer used to create the User Subscription. Specifically update the Compute quotas, such as "Maximum number of VMs", "Maximum number of VM cores" and the "Capacity(GB) of standard managed disk" to be greater than the total number of VMs, and Cores per VM (based on size) multiplied by number of VMs, and the number and size of Data Disks you plan to create.
+1. The **"Windows Server 2019-Datacenter" virtual machine image** must be syndicated from Azure to the Azure Stack Hub marketplace.
+1. The **"PowerShell Desired State Configuration", Version = "2.83.1.0", Type = "Virtual Machine Extension"** must be syndicated from Azure to the Azure Stack Hub marketplace.
+1. It is recommended to create a new / empty User Subscription, using the Offer that has the updated with the required Compute Quotas, as outlined in item 2 above.
+1. The workstation or device used to run the scripts, must have the [Azure Az and Azure Stack PowerShell modules](https://learn.microsoft.com/azure-stack/operator/powershell-install-az-module) installed, as these are used to automate the VM creation and configuring the DSC extension.
+
 ## Source Code
 
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
