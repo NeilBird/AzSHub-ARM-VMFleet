@@ -38,10 +38,10 @@ The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page wil
 1. Execute the **"Run.ps1"** script, that will call **"ARM_VMFleet.ps1"** on line 81, passing the parameters saved from step 3 above.
 1. Deployment logs are saved to "C:\ARM-VMFleet-Logs\" on the device executing the scripts. It is expected to take 1 to 2 hours to complete, if using 30 to 50 VMs, each with 30 to 50 x Data Disks each.
 
-#### WARNING
+### WARNING
 Do NOT use ARM-VMFleet on a production Azure Stack Hub scale unit, as this could cause significant additional load on the scale unit, impacting other workload for the duration of the test(s).
 
-#### Disclaimer
+### Disclaimer
 This sample is not supported under any Microsoft standard support program or service. The script is provided "AS IS" without warranty of any kind. Microsoft further disclaims all implied warranties including, without limitation, any implied warranties of merchantability or of fitness for a particular purpose. The entire risk arising out of the use or performance of the sample and documentation remains with you. In no event shall Microsoft, its authors, or anyone else involved in the creation, production, or delivery of the script be liable for any damages whatsoever (including, without limitation, damages for loss of business profits, business interruption, loss of business information, or other pecuniary loss) arising out of the use of or inability to use the sample or documentation, even if Microsoft has been advised of the possibility of such damages, rising out of the use of or inability to use the sample script, even if Microsoft has been advised of the possibility of such damages.
 
 ## Source Code
