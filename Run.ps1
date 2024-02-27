@@ -1,3 +1,21 @@
+<#
+.NOTES
+    THIS CODE-SAMPLE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED 
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR 
+    FITNESS FOR A PARTICULAR PURPOSE.
+
+    This sample is not supported under any Microsoft standard support program or service. 
+    The script is provided AS IS without warranty of any kind. Microsoft further disclaims all
+    implied warranties including, without limitation, any implied warranties of merchantability
+    or of fitness for a particular purpose. The entire risk arising out of the use or performance
+    of the sample and documentation remains with you. In no event shall Microsoft, its authors,
+    or anyone else involved in the creation, production, or delivery of the script be liable for 
+    any damages whatsoever (including, without limitation, damages for loss of business profits, 
+    business interruption, loss of business information, or other pecuniary loss) arising out of 
+    the use of or inability to use the sample or documentation, even if Microsoft has been advised 
+    of the possibility of such damages, rising out of the use of or inability to use the sample script, 
+    even if Microsoft has been advised of the possibility of such damages. 
+#>
 
 # Requires Az modules to be installed for Azure Stack Hub:
 # https://learn.microsoft.com/en-us/azure-stack/operator/powershell-install-az-module
@@ -60,7 +78,7 @@ try{
 # VM deployment logs default to "C:\ARM-VMFleet-Logs\"
 
 # start ARM-VMFleet
-.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 50 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
+.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 30 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
     -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
      -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
      -dataDiskCount 30 -resultsStorageAccountName 'testharness'
