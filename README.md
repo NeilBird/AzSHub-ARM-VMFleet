@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Azure Resource Manager (ARM) Virtual Machine Fleet, aka: ARM-VMFleet is a PowerShell performance / load testing tool that is designed for use with [Azure Stack Hub](https://learn.microsoft.com/azure-stack/operator/azure-stack-overview).
+Azure Resource Manager (ARM) Virtual Machine Fleet, aka: **ARM-VMFleet** is a PowerShell performance / load testing tool that is designed for use with [Azure Stack Hub](https://learn.microsoft.com/azure-stack/operator/azure-stack-overview).
 
  ARM-VMFleet uses the following components to automate load / performance testing:
 
