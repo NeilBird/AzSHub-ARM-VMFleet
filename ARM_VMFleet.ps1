@@ -2,9 +2,9 @@
 <#
 .SYNOPSIS
     Author:     Neil Bird, MSFT
-    Version:    0.4
+    Version:    0.4.1
     Created:    11th October 2022
-    Updated:    26th February 2024
+    Updated:    27th February 2024
 
 .DESCRIPTION
   
@@ -65,7 +65,8 @@ param
 (
     [PSCredential]$cred,
 	[string]$resourceGroupNamePrefix = 'VMFleet-',
-    [string]$location,    
+    [string]$location,
+    [string]$logfilefolder = "C:\ARM-VMFleet-Logs\", # output folder for logs of VMs
     [string]$resultsStorageAccountName = 'testharness', # where the results from performance counters are saved
     [string]$resultsStorageAccountRg = 'TestHarness',
     [string]$resultsContainerName = 'stacktestresults', # the container for uploading the results of the performance test
@@ -207,6 +208,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
     $params = @(
         $resourceGroup
 		$root
+        $logfilefolder
         $storageKey
 		$vmNamePrefix
         $vmsize
@@ -234,6 +236,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
         param(
             $resourceGroup,
 			$root,
+            $logfilefolder,
             $storageKey,
 			$vmNamePrefix,
             $vmsize,
@@ -260,9 +263,12 @@ for ($x = 1; $x -le $totalVmCount; $x++)
         $vmName = $($vmNamePrefix + "{0:D3}" -f $x)
         $testName = "$vmNamePrefix"
         $sw = [Diagnostics.Stopwatch]::StartNew()
-        $log = "c:\logs\$vmName.log"
-		New-Item -ItemType Directory -Force -Path c:\logs
-		Add-content $log "starting,$(Get-Date -Format 'yyyy-M-d HH:mm:ss')"
+        # If the log directory does not exist, create it
+        if(-not(Test-Path $logfilefolder)){
+            New-Item -ItemType Directory -Force -Path $logfilefolder -ErrorAction Stop
+        }
+        $log = "$logfilefolder\$vmName.log"
+        Add-content $log "starting,$(Get-Date -Format 'yyyy-M-d HH:mm:ss')"
 		Set-Location -Path $root -PassThru | Out-File -FilePath $log -Append -Encoding utf8
         
 
@@ -454,5 +460,5 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
 Write-Host "$(Get-Date -Format 'yyyy-M-d HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...."
 
-# PowerShell jobs hold the status and individual log files are created in C:\logs\ per VM
+# PowerShell jobs hold the status and individual log files are created in $logfilefolder (defaults to "C:\ARM-VMFleet-Logs\") per VM
 Get-Job | Wait-Job | Receive-Job
