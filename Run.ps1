@@ -57,7 +57,7 @@ try{
 }
 
 # Check Hub Compute Quotas before running the script, needs vCPU, VMs, Managed Disks resources
-# VM deployment logs default to C:\logs\
+# VM deployment logs default to "C:\ARM-VMFleet-Logs\"
 
 # start ARM-VMFleet
 .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 50 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
