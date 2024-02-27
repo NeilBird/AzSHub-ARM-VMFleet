@@ -17,7 +17,7 @@ For testing Windows Server Hyper-Converged environments that do not have a local
 
 ## Releases
 
-The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page will be updated periodically, but no SLA on time scales. Please raise a new [issue](https://github.com/NeilBird/AzSHub-ARM-VMFleet/issues) if identified, or submit a PR if you want to contribute to this project.
+The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page shows each released, please use the "Latest" version available. Releases will be updated periodically, but no SLA on time scales. Please raise a new [issue](https://github.com/NeilBird/AzSHub-ARM-VMFleet/issues) if identified, or submit a PR if you want to contribute to this project.
 
 ## Instructions
 
