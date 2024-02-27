@@ -24,7 +24,7 @@ The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page sho
 ### Prerequisites
 
 1. Requires access to a physical Azure Stack Hub scale unit, do not run this tool on a virtual ASDK instance. Requires access to a user account with permissions to [update Quotas](https://learn.microsoft.com/azure-stack/operator/azure-stack-quota-types) using the Administrator Portal or Admin ARM Endpoint, as per item 2 below:
-1. Update the **"Services and quotas"** in the Plan that is linked to the Offer used to create the User Subscription. Specifically update the Compute quotas, such as "Maximum number of VMs", "Maximum number of VM cores" and the "Capacity(GB) of standard managed disk" to be greater than the total number of VMs, and Cores per VM (based on size) multiplied by number of VMs, and the number and size of Data Disks you plan to create.
+1. Update the **"Services and quotas"** in the Plan that is linked to the Offer used to create the User Subscription. Specifically update the Compute quotas, such as "Maximum number of VMs", "Maximum number of VM cores" and the "Capacity(GB) of premium managed disk" to be greater than the total number of VMs, and Cores per VM (based on size) multiplied by number of VMs, and the number and size of Data Disks you plan to create.
 1. The **"Windows Server 2019-Datacenter" virtual machine image** must be syndicated from Azure to the Azure Stack Hub marketplace.
 1. The **"PowerShell Desired State Configuration", Version = "2.83.1.0", Type = "Virtual Machine Extension"** must be syndicated from Azure to the Azure Stack Hub marketplace.
 1. It is recommended to create a new / empty User Subscription, using the Offer that has the updated with the required Compute Quotas, as outlined in item 2 above.
