@@ -2,9 +2,9 @@
 <#
 .SYNOPSIS
     Author:     Neil Bird, MSFT
-    Version:    0.4.2
+    Version:    0.4.4
     Created:    11th October 2022
-    Updated:    27th February 2024
+    Updated:    28th February 2024
 
 .DESCRIPTION
   
@@ -18,10 +18,10 @@
 
     # start ARM-VMFleet:
     $cred = Get-Credential -UserName "admin" -Message "VM Admin cred"
-    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 50 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
+    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
         -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
         -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
-        -dataDiskCount 30 -resultsStorageAccountName 'testharness'
+        -dataDiskCount 50 -resultsStorageAccountName 'armvmfleetresults'
 
      Consideration, it is possible to hit the ARM Write limit of 1200 per 60 minutes per subscription, if you have a
      large number of VMs (50+) and data disks (30+). An error would be shown in the Activity log in the Azure Stack Hub User Portal.
@@ -67,10 +67,11 @@ param
 	[string]$resourceGroupNamePrefix = 'VMFleet-',
     [string]$location,
     [string]$logfilefolder = "C:\ARM-VMFleet-Logs\", # output folder for logs of VMs
-    [string]$resultsStorageAccountName = 'testharness', # where the results from performance counters are saved
-    [string]$resultsStorageAccountRg = 'TestHarness',
-    [string]$resultsContainerName = 'stacktestresults', # the container for uploading the results of the performance test
-	[string]$keyVaultName = 'TestVault'+([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 8)),
+    [string]$resultsStorageAccountName = 'armvmfleetresults', # where the results from performance counters are saved
+    [string]$resultsStorageAccountRg = 'ARM-VMFleet',
+    [string]$resultsContainerName = 'vmfleetresults', # the container for uploading the results of the performance test
+	[string]$keyVaultName = 'VMFleetVault-'+([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 8)),
+    [string]$vnetName = 'VMFleet-vNet',  # the name of the vnet to add the VMs to (must match what is set in the ARM template)
     [string]$AccountType = "Standard_LRS", # could use "Premium_LRS", but does not change disk IOPs QoS policy in Hub, this is a factor of the VM size
     [string]$artifactsContainerName = 'artifacts',  # the container for uploading the published DSC configuration
     [int32]$pauseBetweenVmCreateInSeconds = 0,
@@ -160,7 +161,6 @@ if($initialise.IsPresent){
     Write-Host "Resources ready for ARM VM Fleet automation..."-ForegroundColor Yellow
 
     # check if virtual network already exists, if not create it
-    $vnetName = 'TestVnet'  # the name of the vnet to add the VMs to (must match what is set in the ARM template)
     Write-Host "Creating Virtual Network"
     $frontendSubnet = New-AzVirtualNetworkSubnetConfig -Name 'Subnet' -AddressPrefix "10.0.1.0/24"
     New-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resultsStorageAccountRg -Location $location -AddressPrefix "10.0.0.0/16" -Subnet $frontendSubnet -Force -Confirm:$false -ErrorAction Stop
@@ -169,7 +169,6 @@ if($initialise.IsPresent){
 } # end initialise
 
 # Check if Virtual Network exists, if not create it
-$vnetName = 'TestVnet'  # the name of the vnet to add the VMs to (must match what is set in the ARM template)
 $TestVirtualNetwork = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resultsStorageAccountRg -ErrorVariable VirtualNetworkError -ErrorAction SilentlyContinue
 if($VirtualNetworkError){
     Write-Host "Creating Virtual Network"
@@ -450,7 +449,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             Until([string]::IsNullOrEmpty($blobNotPresent) -or $c -le 0)
 
             if(-not $dontDeleteResourceGroupOnComplete){
-                Add-content $log "deleting resource group $resourceGroup,$($sw.Elapsed.ToString())"
+                Add-content $log "starting deletion of resource group $resourceGroup,$($sw.Elapsed.ToString())"
                 Remove-AzResourceGroup -Name $resourceGroup -Force
             }
 
@@ -465,7 +464,13 @@ for ($x = 1; $x -le $totalVmCount; $x++)
     Start-Sleep -Seconds $pauseBetweenVmCreateInSeconds
 }
 
-Write-Host "$(Get-Date -Format 'yyyy-M-d HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...."
+Write-Host "$(Get-Date -Format 'yyyy-M-d HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...." -ForegroundColor Green
+
+Write-Host "`nInfo: Check the status of ARM VM Fleet jobs by reviewing VM log files in folder: $($logfilefolder)"
+Write-Host "Info: Check the User Portal for VMs CPU metrics."
+Write-Host "Info: For high-level performance statistics, check: Admin Portal --> Resource Providers --> Storage --> Volume Metrics --> Object Store"
+
+Write-Host "`nWaiting for ARM VM Fleet Powershell Jobs to complete....`n" -ForegroundColor Yellow
 
 # PowerShell jobs hold the status and individual log files are created in $logfilefolder, which defaults to "C:\ARM-VMFleet-Logs\", per VM.
 Get-Job | Wait-Job | Receive-Job

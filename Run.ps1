@@ -36,7 +36,7 @@ Set-Location -Path $ScriptDir
 
 # Requires authenticated session to Azure Stack Hub:
 # ACTION: Update the script below, before executing it, using the required parameters for your Region, Fqdn and Tenant name.
-.\_pre-req_Example_Connect.ps1
+.\_pre-req_Example_Connect_ARM.ps1
 
 # Use Grid view to select the User Subscription to deploy the ARM VM Fleet to..
 [string]$GridViewTile = "Select the Subscription/Tenant ID to deploy the ARM VM Fleet to..."
@@ -77,13 +77,12 @@ try{
 # 30 x 10GB data disks = 300GB = 150GB per VM
 
 # Check Hub Compute Quotas before running the script, needs vCPU, VMs, Managed Disks resources
-# VM deployment logs default to "C:\ARM-VMFleet-Logs\"
+# https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-quotas
 
-# start ARM-VMFleet
+# start ARM-VMFleet, note: storage account name must be all lower case.
 .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
     -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
      -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
-     -dataDiskCount 20 -resultsStorageAccountName 'testharness'
+     -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
-
-
+# VM deployment logs default to "C:\ARM-VMFleet-Logs\" on machine running the script.
