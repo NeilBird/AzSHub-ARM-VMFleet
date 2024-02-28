@@ -297,7 +297,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
         # Storage account used for optional, upload / download of file speed tests
         $stdStorageAccountName = 'std'+ ([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 19))
-        Add-content $log "Test upload + download speed, Storage Account Name:  $stdStorageAccountName"
+        Add-content $log "creating storage account for network speed tests: $stdStorageAccountName,$($sw.Elapsed.ToString())"
         $stdStore = New-AzStorageAccount -ResourceGroupName $resourceGroup -Name $stdStorageAccountName `
         -Location $location -Type $AccountType
         New-AzStorageContainer -Name $testName -Context $($stdStore.Context) -ErrorAction Stop
