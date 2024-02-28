@@ -280,11 +280,11 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
         if ($notPresent)
         {
-            Add-content $log "creating $resourceGroup"
-            New-AzResourceGroup -Name $resourceGroup -Location $location
+            Add-content $log "creating resource group: $resourceGroup"
+            New-AzResourceGroup -Name $resourceGroup -Location $location -ErrorAction Stop
         }
 
-        Add-content $log "creating storage,$($sw.Elapsed.ToString())"
+        Add-content $log "creating VM storage,$($sw.Elapsed.ToString())"
         
         if($UseUnmanagedDisks) # switch to use UnmanagedDisks, creates a storage account to store VHDs
         {
@@ -297,13 +297,15 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
         # Storage account used for optional, upload / download of file speed tests
         $stdStorageAccountName = 'std'+ ([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 19))
-        Add-content $log "std Storage Account Name:  $stdStorageAccountName"
+        Add-content $log "Test upload + download speed, Storage Account Name:  $stdStorageAccountName"
         $stdStore = New-AzStorageAccount -ResourceGroupName $resourceGroup -Name $stdStorageAccountName `
         -Location $location -Type $AccountType
-        # Create SAS token for the container to upload the PerfMon BLG and DiskSpd output
+        New-AzStorageContainer -Name $testName -Context $($stdStore.Context) -ErrorAction Stop
+        # Create SAS token for the container to use for upload / download tests
         $fileUploadTestSasToken = New-AzStorageContainerSASToken -Container $testName -FullUri -Context $stdStore.Context -Permission rw -ExpiryTime (Get-Date).AddHours(24)
 
-		# add a new container to resultsStorage account, used to upload the PerfMon BLG and DiskSpd output
+		# add a new container to $resultsStorageAccountName storage account, to upload the PerfMon BLG and DiskSpd output per VM
+        $resultsStorage = Get-AzStorageAccount -ResourceGroupName $resultsStorageAccountRg -Name $resultsStorageAccountName -ErrorAction Stop
         Add-content $log "creating VM container in results storage account,$($sw.Elapsed.ToString())"
 		New-AzStorageContainer -Name $vmName.ToLower() -Context $($resultsStorage.Context) -ErrorAction Stop
         
@@ -387,9 +389,11 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
         # VM Creation Successful:
         if($vmresult.IsSuccessStatusCode){
+            Add-content $log "= = = = = = = = = ="
             Add-content $log "vmName = $vmName"
             Add-content $log "VM created successfully,$($sw.Elapsed.ToString())"
 	        Add-content $log "diskspddownloadurl = $diskSpdDownloadUrl"
+            Add-content $log "uploadSasToken  = $uploadSasToken"
 	        Add-content $log "testParams = $testParams"
             Add-content $log "testName = $testName"
             Add-content $log "storageKey = $storageKey"
