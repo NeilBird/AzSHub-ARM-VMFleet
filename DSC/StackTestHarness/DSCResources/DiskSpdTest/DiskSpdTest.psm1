@@ -67,7 +67,7 @@ function Set-TargetResource
 
         [string[]]$PerformanceCounters = @('\PhysicalDisk(*)\*', '\Processor Information(*)\*', '\Memory(*)\*', '\Network Interface(*)\*')
     )
-	$n = "perf-trace-$TestName-$env:COMPUTERNAME"
+	$n = "perf-trace-$TestName-$($env:COMPUTERNAME.ToLower())"
 	$resultsPath = [io.path]::combine($ResultsOutputDirectory, $n + ".blg")
 	$resultsExist = [System.IO.File]::Exists($resultsPath)
 
@@ -171,7 +171,7 @@ function Test-TargetResource
 
 
 	#Include logic to
-	$resultsPath = [io.path]::combine($ResultsOutputDirectory, $env:COMPUTERNAME + "-" + $TestName + ".blg")
+	$resultsPath = [io.path]::combine($ResultsOutputDirectory, $($env:COMPUTERNAME.ToLower()) + "-" + $TestName + ".blg")
 	$resultsExist = [System.IO.File]::Exists($resultsPath)
 	#Add logic to test whether the website is present and its status matches the supplied parameter values. If it does, return true. If it does not, return false.
 	$resultsExist

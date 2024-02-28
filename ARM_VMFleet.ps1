@@ -67,9 +67,8 @@ param
 	[string]$resourceGroupNamePrefix = 'VMFleet-', # the prefix for the resource group names
     [string]$location, # the location to create the VMs in, this is the "region" in Azure Stack Hub
     [string]$logfilefolder = "C:\ARM-VMFleet-Logs\", # output folder for logs of VMs
-    [string]$resultsStorageAccountName = 'armvmfleetresults', # where the results from performance counters are saved
+    [string]$resultsStorageAccountName = 'vmfleetresults', # where the results from performance counters are saved
     [string]$resultsStorageAccountRg = 'ARM-VMFleet',
-    [string]$resultsContainerName = 'vmfleetresults', # the container for uploading the results of the performance test
 	[string]$keyVaultName = 'VMFleetVault-'+([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 8)),
     [string]$vnetName = 'VMFleet-vNet',  # the name of the vnet to add the VMs to (must match what is set in the ARM template)
     [string]$AccountType = "Standard_LRS", # could use "Premium_LRS", but does not change disk IOPs QoS policy in Hub, this is a factor of the VM size
@@ -129,8 +128,7 @@ if($initialise.IsPresent){
     $resultsStdStore = New-AzStorageAccount -ResourceGroupName $resultsStorageAccountRg -Name $resultsStorageAccountName `
     -Location $location -Type $AccountType -ErrorAction Stop
     
-    Write-Host "- creating containers" -ForegroundColor Yellow
-    New-AzStorageContainer -Name $resultsContainerName -Context $($resultsStdStore.Context) -ErrorAction Stop
+    Write-Host "- creating artifacts containers" -ForegroundColor Yellow
     New-AzStorageContainer -Name $artifactsContainerName -Context $($resultsStdStore.Context) -ErrorAction Stop
 
     # upload DiskSpd-2.1.zip to artifacts
@@ -209,6 +207,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
     $resourceGroup = $resourceGroupNamePrefix + "{0:D3}" -f $x
 
     Write-Host "Starting creation of vm: $($vmNamePrefix + "{0:D3}" -f $x) in resource group: $resourceGroup..."
+    $resultsContainerName = $($vmNamePrefix + "{0:D3}" -f $x).ToLower()
 
     $params = @(
         $resourceGroup
@@ -306,7 +305,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
 		# add a new container to resultsStorage account, used to upload the PerfMon BLG and DiskSpd output
         Add-content $log "creating VM container in results storage account,$($sw.Elapsed.ToString())"
-		New-AzStorageContainer -Name $vmName.ToLower() -Context $resultsStorage.Context
+		New-AzStorageContainer -Name $vmName.ToLower() -Context $($resultsStorage.Context) -ErrorAction Stop
         
         # Create SAS token for the container to upload the PerfMon BLG and DiskSpd output
         $uploadSasToken = New-AzStorageContainerSASToken -Container $vmName.ToLower() -FullUri -Context $resultsStorage.Context -Permission rw -ExpiryTime (Get-Date).AddHours(24)
@@ -437,20 +436,28 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             $c = 6 
             Do{
                 Get-AzStorageBlob -Blob "perf-trace-$testName-$vmName.blg" -Container $resultsContainerName `
-                -Context $resultsStorage.Context -ErrorAction SilentlyContinue -ErrorVariable blob1NotPresent
-                        
-            $vmName = $vmName.ToUpper() # not sure why but the blob gets created with a vmname in caps when on stack
-            Get-AzStorageBlob -Blob "perf-trace-$testName-$vmName.blg" -Container $resultsContainerName `
-            -Context $resultsStorage.Context -ErrorAction SilentlyContinue -ErrorVariable blob2NotPresent
+                -Context $resultsStorage.Context -ErrorAction SilentlyContinue -ErrorVariable blgNotPresent
+            
+                Get-AzStorageBlob -Blob "perf-trace-$testName-$vmName.txt" -Container $resultsContainerName `
+                -Context $resultsStorage.Context -ErrorAction SilentlyContinue -ErrorVariable txtNotPresent
 
-            if($blob1NotPresent -and $blob2NotPresent)
+                if($blgNotPresent)
                 {
-                    Add-content $log "checking for blob"
+                    Add-content $log "checking for PerfMon blg blob"
                     Start-Sleep -Seconds 5
+                } else {
+                    Add-content $log "PerfMon blg blob found"
+                }
+                if($txtNotPresent)
+                {
+                    Add-content $log "checking for DiskSpd txt file blob"
+                    Start-Sleep -Seconds 5
+                } else {
+                    Add-content $log "DiskSpd txt file blob found"
                 }
             $c--
             } 
-            Until([string]::IsNullOrEmpty($blobNotPresent) -or $c -le 0)
+            Until([string]::IsNullOrEmpty($txtNotPresent) -or $c -le 0)
 
             if(-not $dontDeleteResourceGroupOnComplete){
                 Add-content $log "starting deletion of resource group $resourceGroup,$($sw.Elapsed.ToString())"
