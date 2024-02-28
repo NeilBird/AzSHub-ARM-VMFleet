@@ -21,7 +21,7 @@
     .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
         -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
         -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
-        -dataDiskCount 50 -resultsStorageAccountName 'armvmfleetresults'
+        -dataDiskCount 50 -resultsStorageAccountName 'vmfleetresults'
 
      Consideration, it is possible to hit the ARM Write limit of 1200 per 60 minutes per subscription, if you have a
      large number of VMs (50+) and data disks (30+). An error would be shown in the Activity log in the Azure Stack Hub User Portal.
@@ -63,9 +63,9 @@ Additional notes:
 
 param
 (
-    [PSCredential]$cred,
-	[string]$resourceGroupNamePrefix = 'VMFleet-',
-    [string]$location,
+    [PSCredential]$cred, # the credentials to use for the VMs
+	[string]$resourceGroupNamePrefix = 'VMFleet-', # the prefix for the resource group names
+    [string]$location, # the location to create the VMs in, this is the "region" in Azure Stack Hub
     [string]$logfilefolder = "C:\ARM-VMFleet-Logs\", # output folder for logs of VMs
     [string]$resultsStorageAccountName = 'armvmfleetresults', # where the results from performance counters are saved
     [string]$resultsStorageAccountRg = 'ARM-VMFleet',
@@ -74,20 +74,20 @@ param
     [string]$vnetName = 'VMFleet-vNet',  # the name of the vnet to add the VMs to (must match what is set in the ARM template)
     [string]$AccountType = "Standard_LRS", # could use "Premium_LRS", but does not change disk IOPs QoS policy in Hub, this is a factor of the VM size
     [string]$artifactsContainerName = 'artifacts',  # the container for uploading the published DSC configuration
-    [int32]$pauseBetweenVmCreateInSeconds = 0,
-    [int32]$totalVmCount = 5,
-    [System.IO.FileInfo]$diskSpd = ".\DiskSpd.ZIP",
+    [int32]$pauseBetweenVmCreateInSeconds = 0, # the number of seconds to pause between creating VMs
+    [int32]$totalVmCount = 5, # the number of VMs to create
+    [System.IO.FileInfo]$diskSpd = ".\DiskSpd.ZIP", # the path to the DiskSpd archive, this is in the root of the scripts folder
 
 	[ValidateLength(3,20)]
-	[string]$vmNamePrefix = 'iotest', # DO NOT USE CHARS SUCH AS HYPHENS
-	[string]$vmsize = 'Standard_D2s_v3',   # the size of VM
+	[string]$vmNamePrefix = 'iotest', # DO NOT USE CHARS SUCH AS HYPHENS, as this is used for Storage Container name.
+	[string]$vmsize = 'Standard_D2s_v3',   # the size of VM to create
     [string]$testParams = '-c20G -t15 -o128 -d3600 -w50 -Rxml', # the parameters for DiskSpd, default block size is 64K
     [string]$dscPath = '.\DSC\DiskPrepTest.ps1',     # the path to the DSC configuration to run on the VMs
-    [string]$storageUrlDomain,
-	[int32]$dataDiskSizeGb = 10,
+    [string]$storageUrlDomain, # the domain of the storage account, e.g. "blob.<region>.<fqdn>"
+	[int32]$dataDiskSizeGb = 10, # size of data disks to add to each VM
     [int32]$dataDiskCount = 4, # count of data disks to add to each VM, these are added to a Stripe 0 in Storage Spaces, VM size must support number of data disks.
-    [switch]$dontDeleteResourceGroupOnComplete,
-	[switch]$dontPublishDscBeforeStarting,
+    [switch]$dontDeleteResourceGroupOnComplete, # switch to not delete the resource group on completion, useful for debugging
+	[switch]$dontPublishDscBeforeStarting, # switch to not publish the DSC before starting the VMs, useful for debugging
 	[switch]$initialise, # needed for initial deployment to create vnet
     [switch]$UseUnmanagedDisks # switch to use UnmanagedDisks, default to Managed Disks without this present.
 
@@ -106,7 +106,6 @@ if(-not (Test-Path $dscPath)){
 	Write-Host "Can't find necessary files. Are you at the right location?"
 	exit
 }
-
 
 Enable-AzContextAutosave
 # If Initialise switch passed
@@ -297,19 +296,24 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             -Location $location -Type $AccountType -ErrorAction Stop
         }
 
-        # Storage account used to upload PerfMon BLG and DiskSpd output.
+        # Storage account used for optional, upload / download of file speed tests
         $stdStorageAccountName = 'std'+ ([System.Guid]::NewGuid().ToString().Replace('-', '').substring(0, 19))
-         Add-content $log "std Storage Account Name:  $stdStorageAccountName"
+        Add-content $log "std Storage Account Name:  $stdStorageAccountName"
         $stdStore = New-AzStorageAccount -ResourceGroupName $resourceGroup -Name $stdStorageAccountName `
-          -Location $location -Type $AccountType
+        -Location $location -Type $AccountType
+        # Create SAS token for the container to upload the PerfMon BLG and DiskSpd output
+        $fileUploadTestSasToken = New-AzStorageContainerSASToken -Container $testName -FullUri -Context $stdStore.Context -Permission rw -ExpiryTime (Get-Date).AddHours(24)
 
-		# add container for streaming file in the network tests and acquire full url with SAS token
-		New-AzStorageContainer -Name $testName -Context $stdStore.Context 
-
-		$uploadSasToken = New-AzStorageContainerSASToken -Container $testName -FullUri -Context $stdStore.Context -Permission rw -ExpiryTime (Get-Date).AddHours(24)
-
+		# add a new container to resultsStorage account, used to upload the PerfMon BLG and DiskSpd output
+        Add-content $log "creating VM container in results storage account,$($sw.Elapsed.ToString())"
+		New-AzStorageContainer -Name $vmName.ToLower() -Context $resultsStorage.Context
+        
+        # Create SAS token for the container to upload the PerfMon BLG and DiskSpd output
+        $uploadSasToken = New-AzStorageContainerSASToken -Container $vmName.ToLower() -FullUri -Context $resultsStorage.Context -Permission rw -ExpiryTime (Get-Date).AddHours(24)
+        
         Add-content $log "creating virtual nic,$($sw.Elapsed.ToString())"
 
+        # Get the virtual network and subnet, to create the vNIC
         $Vnet = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resultsStorageAccountRg
         $SingleSubnet = Get-AzVirtualNetworkSubnetConfig -Name 'Subnet' -VirtualNetwork $Vnet
 
