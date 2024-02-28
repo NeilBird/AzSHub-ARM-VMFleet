@@ -21,7 +21,7 @@ if(-not($dirError) -and ($null -ne $DCSfolder) -and ($DCSfolder.PSIsContainer -e
 {
 	# delete existing and copy
     Write-Progress -Activity "DSC Step 1 - Custom DSC resource" -Status "Removing existing custom DSC resource" -PercentComplete 0
-    Remove-Item -Recurse -Force "C:\Program Files\WindowsPowerShell\Modules\StackTestHarness" -Confirm:$false -Verbose -ErrorAction Stop
+    Remove-Item -Recurse -Force "C:\Program Files\WindowsPowerShell\Modules\StackTestHarness" -Confirm:$false -Verbose -ErrorAction Continue
     Write-Progress -Activity "DSC Step 1 - Custom DSC resource" -Status "Copying custom DSC resource" -PercentComplete 33
     Copy-Item -Recurse -Force -Path .\DSC\StackTestHarness -Destination "C:\Program Files\WindowsPowershell\Modules\" -Confirm:$false -Verbose -ErrorAction Stop
 } else {
