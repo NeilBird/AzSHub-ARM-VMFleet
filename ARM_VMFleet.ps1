@@ -144,12 +144,12 @@ if($initialise.IsPresent){
     
     Write-Host "- adding secrets to key vault..." -ForegroundColor Yellow
     # ConvertTo-SecureString -AsPlainText -Force
-    $Password = ConvertTo-SecureString -String $cred.Password -AsPlainText -Force
-    # Add secret to key vault
+    $Password = ConvertTo-SecureString -String $cred.GetNetworkCredential().Password -AsPlainText -Force
+    # Add password secret to key vault
     Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'password' -SecretValue $Password | Out-Null
     # ConvertTo-SecureString -AsPlainText -Force
-    $Username = ConvertTo-SecureString -String $cred.Username -AsPlainText -Force
-    # Add secret to key vault
+    $Username = ConvertTo-SecureString -String $cred.GetNetworkCredential().UserName -AsPlainText -Force
+    # Add username secret to key vault
     Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'username' -SecretValue $Username | Out-Null
     $accKey = Get-AzStorageAccountKey -ResourceGroupName $resultsStorageAccountRg -AccountName $resultsStorageAccountName -ErrorAction Stop
     # Add storage key to key vault
