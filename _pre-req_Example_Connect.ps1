@@ -15,7 +15,7 @@ Add-AzEnvironment -Name "AzureStack" -ArmEndpoint "https://management.<region>.<
   -AzureKeyVaultDnsSuffix "vault.<region>.<fqdn>" `
   -AzureKeyVaultServiceEndpointResourceId "https://vault.<region>.<fqdn>"
 
-# Get your Tenant ID.
+# Get the Tenant ID, required if you are using a Guest Account in another tenant:
 $AADTenantName = "<tenant>.onmicrosoft.com"
 $AuthEndpoint = (Get-AzEnvironment -Name "AzureStack").ActiveDirectoryAuthority.TrimEnd('/')
 $TenantId = (invoke-restmethod "$($AuthEndpoint)/$($AADTenantName)/.well-known/openid-configuration").issuer.TrimEnd('/').Split('/')[-1]
@@ -23,3 +23,8 @@ $TenantId = (invoke-restmethod "$($AuthEndpoint)/$($AADTenantName)/.well-known/o
 # After signing in to your environment, Azure Stack Hub cmdlets
 # can be easily targeted at your Azure Stack Hub instance.
 Add-AzAccount -EnvironmentName "AzureStack" -TenantId $TenantId
+
+# Example for ADFS Identity Provider stamps, or if your are using Entra ID and your user account's "home tenant":
+# After signing in to your environment, Azure Stack Hub cmdlets
+# can be easily targeted at your Azure Stack Hub instance.
+Add-AzAccount -EnvironmentName "AzureStack"
