@@ -4,11 +4,9 @@
 
 # Example, how to add a custom "AzEnvironment" for Azure Stack Hub and connect to the User (management) endpoint.
 
-# //// ACTION = TO DO: Replace the <values> with the appropriate values for your Azure Stack Hub instance.
+# //// ACTION: Replace the <values> with the appropriate values for your Azure Stack Hub instance.
 # <region> with the region name of your Azure Stack Hub instance.
 # <fqdn> with the fully qualified domain name (FQDN) of your Azure Stack Hub instance.
-# <tenant>.onmicrosoft.com with the Azure Active Directory (AAD) tenant name of your Azure Stack Hub instance.
-
 
 # Register an Azure Resource Manager environment that targets your Azure Stack Hub instance.
 # Get your Azure Resource Manager endpoint value from your service provider.
@@ -23,6 +21,7 @@ Add-AzAccount -EnvironmentName "AzureStack"
 
 # Example when your user account is a Guest Account in another Entra ID tenant:
 # Requires Tenant ID, if you are using a Guest Account in another tenant:
+# //// ACTION: Replace "<tenant>" with the Entra ID (aka: Azure Active Directory (AAD)) tenant name used for your Azure Stack Hub identity provider.
 $AADTenantName = "<tenant>.onmicrosoft.com"
 $AuthEndpoint = (Get-AzEnvironment -Name "AzureStack").ActiveDirectoryAuthority.TrimEnd('/')
 $TenantId = (invoke-restmethod "$($AuthEndpoint)/$($AADTenantName)/.well-known/openid-configuration").issuer.TrimEnd('/').Split('/')[-1]
