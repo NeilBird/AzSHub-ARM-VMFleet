@@ -35,7 +35,7 @@ The [Releases](https://github.com/NeilBird/AzSHub-ARM-VMFleet/releases) page sho
 1. After completing the prerequisites above, first connect to your target Azure Stack Hub scale unit using the Az PowerShell module, example commands to execute can be found in the **"_pre-req_Example_Connect_ARM.ps1"** script. Note: Replace the parameters in <> brackets to match your environment prior to executing.
 1. Run the commands in the **"_pre-req_Initialise_DSC.ps1"** script in install the DSC resources locally. This script installs the required DSC Resources on your workstation or device, this is required for the scripts to publish the custom DSC package (zip file) to a storage account, which is automated using [Publish-AzVMDscConfiguration](https://learn.microsoft.com/powershell/module/az.compute/publish-azvmdscconfiguration?view=azps-11.3.0) in the main ARM-VMFleet.ps1.
 1. Open the **"Run.ps1"** script in VSCode or similar editor, update the parameters to match your environment, such as "location" to match the Hub scale unit region name, and the "region" and "fqdn" in the -storageUrlDomain parameter. Update the -totalVmCount and -vmsize parameters to match your requirements and save the script file.
-1. Execute the **"Run.ps1"** script, that will call **"ARM_VMFleet.ps1"** on line 81, passing the parameters saved from step 3 above.
+1. Execute the **"Run.ps1"** script, that will call **"ARM_VMFleet.ps1"** on line 84, passing the parameters saved from step 3 above.
 1. Deployment logs are saved to "C:\ARM-VMFleet-Logs\" on the device executing the scripts. It is expected to take 1 to 2 hours to complete, if using 30 to 50 VMs, each with 30 to 50 x Data Disks each.
 
 ### WARNING
