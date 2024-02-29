@@ -79,10 +79,14 @@ try{
 # Check Hub Compute Quotas before running the script, needs vCPU, VMs, Managed Disks resources
 # https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-quotas
 
-# start ARM-VMFleet, note: storage account name must be all lower case.
-# ACTION: Update the script below, before executing it, using the required parameters for your <location>, and <region>.<fqdn>
-.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
-    -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
+# Hub region name / location:
+$location = $((Get-AzLocation).location)
+# StorageEndpointSuffix, used for storage account blob creation:
+$storageEndpointSuffix = $((Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
+
+# Start ARM-VMFleet, note: storage account name must be all lower case.
+.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F16s' `
+    -storageUrlDomain "blob.$storageEndpointSuffix" -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
      -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
      -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
