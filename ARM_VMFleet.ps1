@@ -2,9 +2,9 @@
 <#
 .SYNOPSIS
     Author:     Neil Bird, MSFT
-    Version:    0.4.4
+    Version:    0.4.5
     Created:    11th October 2022
-    Updated:    29th February 2024
+    Updated:    5th March 2024
 
 .DESCRIPTION
   
@@ -16,12 +16,22 @@
 
 .EXAMPLE
 
-    # start ARM-VMFleet:
+    # Requires authenticated session to Azure Stack Hub management (ARM) endpoint:
+    .\_pre-req_Example_Connect_ARM.ps1
+
+    # Hub region name / location:
+    $location = $((Get-AzLocation).location)
+    # StorageEndpointSuffix, used for storage account blob creation:
+    $storageEndpointSuffix = $((Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
+    
+    # Create a credential object for the VMs:
     $cred = Get-Credential -UserName "admin" -Message "VM Admin cred"
-    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location '<location>' -vmsize 'Standard_F16s' `
-        -storageUrlDomain 'blob.<region>.<fqdn>' -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
-        -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
-        -dataDiskCount 50 -resultsStorageAccountName 'vmfleetresults'
+    
+    # start ARM-VMFleet:
+    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 25 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
+        -storageUrlDomain "blob.$storageEndpointSuffix" -testParams '-c100G -t32 -o64 -d2700 -W900 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
+        -resourceGroupNamePrefix 'VMfleet-' -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
+        -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
      Consideration, it is possible to hit the ARM Write limit of 1200 per 60 minutes per subscription, if you have a
      large number of VMs (50+) and data disks (30+). An error would be shown in the Activity log in the Azure Stack Hub User Portal.
@@ -61,10 +71,14 @@ Additional notes:
     outputting the results to blob storage. It then deletes each resource group once the test is complete.
 #>
 
-param
+[CmdletBinding()]
+Param
 (
+    [parameter(Mandatory=$True)]
     [PSCredential]$cred, # the credentials to use for the VMs
 	[string]$resourceGroupNamePrefix = 'VMFleet-', # the prefix for the resource group names
+    [ValidateLength(3,10)]
+    [parameter(Mandatory=$True)]
     [string]$location, # the location to create the VMs in, this is the "region" in Azure Stack Hub
     [string]$logfilefolder = "C:\ARM-VMFleet-Logs\", # output folder for logs of VMs
     [string]$resultsStorageAccountName = 'vmfleetresults', # where the results from performance counters are saved
@@ -82,6 +96,8 @@ param
 	[string]$vmsize = 'Standard_D2s_v3',   # the size of VM to create
     [string]$testParams = '-c20G -t15 -o128 -d3600 -w50 -Rxml', # the parameters for DiskSpd, default block size is 64K
     [string]$dscPath = '.\DSC\DiskPrepTest.ps1',     # the path to the DSC configuration to run on the VMs
+    [ValidateLength(6,100)]
+    [parameter(Mandatory=$True)]
     [string]$storageUrlDomain, # the domain of the storage account, e.g. "blob.<region>.<fqdn>"
 	[int32]$dataDiskSizeGb = 10, # size of data disks to add to each VM
     [int32]$dataDiskCount = 4, # count of data disks to add to each VM, these are added to a Stripe 0 in Storage Spaces, VM size must support number of data disks.
@@ -113,36 +129,51 @@ if($initialise.IsPresent){
     Write-Host "Initialise is set to $initialise`n"
 
     # Register required Resource Providers:
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Resource Providers" -PercentComplete 0
     Write-Host "Registering Resource Providers in subscription $((Get-AzContext).Subscription.Name)" -ForegroundColor Yellow
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Microsoft.Resources" -PercentComplete 6
     Register-AzResourceProvider -ProviderNamespace Microsoft.Resources -Verbose -ErrorAction Stop
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Microsoft.Storage" -PercentComplete 12
     Register-AzResourceProvider -ProviderNamespace Microsoft.Storage -Verbose -ErrorAction Stop
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Microsoft.Network" -PercentComplete 18
     Register-AzResourceProvider -ProviderNamespace Microsoft.Network -Verbose -ErrorAction Stop
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Microsoft.Compute" -PercentComplete 24
     Register-AzResourceProvider -ProviderNamespace Microsoft.Compute -Verbose -ErrorAction Stop
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Registering Microsoft.KeyVault" -PercentComplete 28
     Register-AzResourceProvider -ProviderNamespace Microsoft.KeyVault -Verbose -ErrorAction Stop
 
     Write-Host "Creating resources to receive test results/output" -ForegroundColor Yellow
     Write-Host "- creating resource group $resultsStorageAccountRg on $location" -ForegroundColor Yellow
-    New-AzResourceGroup -Name $resultsStorageAccountRg -Location $location
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Resource Group" -PercentComplete 34
+    New-AzResourceGroup -Name $resultsStorageAccountRg -Location $location -ErrorAction Stop
     
     Write-Host "- creating storage account Storage Account: $resultsStorageAccountName  Resource Group: $resultsStorageAccountRg" -ForegroundColor Yellow
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Storage Account" -PercentComplete 40
     $resultsStdStore = New-AzStorageAccount -ResourceGroupName $resultsStorageAccountRg -Name $resultsStorageAccountName `
     -Location $location -Type $AccountType -ErrorAction Stop
     
     Write-Host "- creating artifacts containers" -ForegroundColor Yellow
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating DSC Artifacts Container" -PercentComplete 46
     New-AzStorageContainer -Name $artifactsContainerName -Context $($resultsStdStore.Context) -ErrorAction Stop
 
     # upload DiskSpd-2.1.zip to artifacts
     Write-Host "- uploading diskspd archive" -ForegroundColor Yellow
-    Set-AzStorageBlobContent -File $diskSpd -Blob 'DiskSpd.ZIP' -Container $artifactsContainerName -Context $resultsStdStore.Context -Force -ErrorAction Stop
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Uploading DiskSpd.zip Archive" -PercentComplete 52 
+    Set-AzStorageBlobContent -File $diskSpd -Blob 'DiskSpd.ZIP' -Container $artifactsContainerName -Context $resultsStdStore.Context -Verbose -Force -ErrorAction Stop
+    # Remove write progress bar from Set-AzStorageBlobContent output
+    Write-Progress -Completed
     
     Write-Host "- creating key vault" -ForegroundColor Yellow
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Key Vault" -PercentComplete 58
     New-AzKeyVault -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -Location $location -ErrorAction Stop
 
     # Creator / owner can set all access policies, but we need to set the current user to have explicit access to the key vault
     Write-Host "- setting access policy for $((get-azcontext).Account.Id) on key vault"  -ForegroundColor Yellow
-    Set-AzKeyVaultAccessPolicy -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -EmailAddress $((get-azcontext).Account.Id) -PermissionsToKeys get,create,import,delete,list,update -PermissionsToSecrets get,set,delete,list,recover,backup,restore,purge -PassThru
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Setting KeyVault Access Policy" -PercentComplete 64
+    Set-AzKeyVaultAccessPolicy -VaultName $keyVaultName -ResourceGroupName $resultsStorageAccountRg -EmailAddress $((get-azcontext).Account.Id) -PermissionsToKeys get,create,import,delete,list,update -PermissionsToSecrets get,set,delete,list,recover,backup,restore,purge -PassThru -ErrorAction SilentlyContinue
     
     Write-Host "- adding secrets to key vault..." -ForegroundColor Yellow
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Adding VM Password Secret to KeyVault" -PercentComplete 70
     # ConvertTo-SecureString -AsPlainText -Force
     $Password = ConvertTo-SecureString -String $cred.GetNetworkCredential().Password -AsPlainText -Force
     # Add password secret to key vault
@@ -150,16 +181,20 @@ if($initialise.IsPresent){
     # ConvertTo-SecureString -AsPlainText -Force
     $Username = ConvertTo-SecureString -String $cred.GetNetworkCredential().UserName -AsPlainText -Force
     # Add username secret to key vault
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Adding VM Username Secret to KeyVault" -PercentComplete 76
     Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'username' -SecretValue $Username | Out-Null
     $accKey = Get-AzStorageAccountKey -ResourceGroupName $resultsStorageAccountRg -AccountName $resultsStorageAccountName -ErrorAction Stop
     # Add storage key to key vault
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Adding Storage Account Key Secret to KeyVault" -PercentComplete 82
     Set-AzKeyVaultSecret -VaultName $keyVaultName -Name 'storageKey' -SecretValue (ConvertTo-SecureString $accKey.Value[0] -AsPlainText -Force)
 
     Write-Host "Resources ready for ARM VM Fleet automation..."-ForegroundColor Yellow
 
     # check if virtual network already exists, if not create it
     Write-Host "Creating Virtual Network"
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Virtual Network Subnet" -PercentComplete 88
     $frontendSubnet = New-AzVirtualNetworkSubnetConfig -Name 'Subnet' -AddressPrefix "10.0.1.0/24"
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Virtual Network" -PercentComplete 92
     New-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resultsStorageAccountRg -Location $location -AddressPrefix "10.0.0.0/16" -Subnet $frontendSubnet -Force -Confirm:$false -ErrorAction Stop
     Write-Host "Virtual Network created" -ForegroundColor Yellow
 
@@ -189,11 +224,13 @@ $resultsStorage = Get-AzStorageAccount -ResourceGroupName $resultsStorageAccount
 
 if(-not $dontPublishDscBeforeStarting){
 	Write-Host "Publishing DSC"
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Publishing Custom DSC Resource" -PercentComplete 96
 	# we need to publish the dsc to the root of the "artifacts" container:
     Publish-AzVMDscConfiguration -ConfigurationPath $dscPath -ResourceGroupName $resultsStorageAccountRg `
 		-StorageAccountName $resultsStorageAccountName -ContainerName $artifactsContainerName -Force -Verbose -ErrorAction Stop
 }
 
+Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Initialisation complete" -PercentComplete 100
 
 $storageKey = (Get-AzStorageAccountKey -ResourceGroupName $resultsStorageAccountRg -AccountName $resultsStorageAccountName -ErrorAction Stop).Value[0] +''
 
@@ -201,9 +238,13 @@ $diskSpdDownloadUrl = New-AzStorageBlobSASToken -Blob 'DiskSpd.ZIP' -Container $
 
 Write-Verbose "`nDiskSpd download url: $diskSpdDownloadUrl"
 
+
 # Loop to create VMs
 for ($x = 1; $x -le $totalVmCount; $x++)
 {
+
+    Write-Progress -Activity "Deploying ARM VM Fleet:" -Status "Creating VM $x of $totalVmCount..." -PercentComplete $(($x / $totalVmCount) * 100)
+
     $resourceGroup = $resourceGroupNamePrefix + "{0:D3}" -f $x
 
     Write-Host "Starting creation of vm: $($vmNamePrefix + "{0:D3}" -f $x) in resource group: $resourceGroup..."
@@ -248,7 +289,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             $AccountType,
 			$dataDiskSizeGb,
             $dataDiskCount,
-            $cred, 
+            [PSCredential] $cred, 
             $x, 
             $location,
 			$diskSpdDownloadUrl,
@@ -417,7 +458,8 @@ for ($x = 1; $x -le $totalVmCount; $x++)
             }
 			
             # above we published the DSC to the root of the container
-            Add-content $log "`ndeploying dsc extension to $vmName,$($sw.Elapsed.ToString())"
+            Add-content $log "`ndeploying dsc extension to $vmName at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), time elapsed = $($sw.Elapsed.ToString())"
+            Add-content $log "DiskSpd Params = $testParams, "
 
             # Install DSC Extension to run custom DSC resource:
             $dscResult = Set-AzVMDscExtension -Name Microsoft.Powershell.DSC -ArchiveBlobName 'DiskPrepTest.ps1.zip' `
@@ -470,7 +512,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 
         }
 
-		Add-content $log "done,$($sw.Elapsed.ToString()),$(Get-Date -Format 'yyyy-M-d HH:mm:ss')"
+		Add-content $log "done,$($sw.Elapsed.ToString()),$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 		$sw.Stop()
 
     } -ArgumentList $params
@@ -479,13 +521,16 @@ for ($x = 1; $x -le $totalVmCount; $x++)
     Start-Sleep -Seconds $pauseBetweenVmCreateInSeconds
 }
 
-Write-Host "$(Get-Date -Format 'yyyy-M-d HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...." -ForegroundColor Green
+Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...." -ForegroundColor Green
+
+# Remove write progress bar, as all VMs have been created.
+Write-Progress -Completed
 
 Write-Host "`nInfo: Check the status of ARM VM Fleet jobs by reviewing VM log files in folder: $($logfilefolder)"
 Write-Host "Info: Check the User Portal for VMs CPU metrics."
 Write-Host "Info: For high-level performance statistics, check: Admin Portal --> Resource Providers --> Storage --> Volume Metrics --> Object Store"
 
-Write-Host "`nWaiting for ARM VM Fleet Powershell Jobs to complete....`n" -ForegroundColor Yellow
+Write-Host "`nWaiting for ARM VM Fleet PowerShell Jobs to complete....`n`nThis will take some time depending on the DiskSpd -d (test duratoin) parameter used.`n" -ForegroundColor Yellow
 
 # PowerShell jobs hold the status and individual log files are created in $logfilefolder, which defaults to "C:\ARM-VMFleet-Logs\", per VM.
 Get-Job | Wait-Job | Receive-Job

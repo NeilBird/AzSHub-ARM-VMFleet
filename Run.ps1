@@ -16,12 +16,12 @@
     of the possibility of such damages, rising out of the use of or inability to use the sample script, 
     even if Microsoft has been advised of the possibility of such damages. 
 #>
+# This script is not intended to be run as a whole, it is intended to be run in parts, to allow for user input and selection of the required parameters.
+Write-Host "This script is not intended to be run as a whole, it is intended to be run in parts, to allow for user input and selection of the required parameters." -ForegroundColor Yellow
+Break
 
 # Requires Az modules to be installed for Azure Stack Hub:
 # https://learn.microsoft.com/en-us/azure-stack/operator/powershell-install-az-module
-
-# Credentials for the VMs
-$cred = Get-Credential -UserName "admin" -Message "Admin credentials for the VMs"
 
 # Set the location of the script directory, Default to script execution folder
 if([string]::IsNullOrWhiteSpace($script:MyInvocation.MyCommand.Path)){
@@ -31,10 +31,11 @@ if([string]::IsNullOrWhiteSpace($script:MyInvocation.MyCommand.Path)){
 }
 Set-Location -Path $ScriptDir
 
-# Initialise the DSC configuration, this installs the required DCS resource modules locally.
+# Required: Initialise the DSC configuration, this installs the required DCS resource modules locally.
 .\_pre-req_Initialise_DSC.ps1
 
 # Requires authenticated session to Azure Stack Hub:
+# Example commands for Add-AzEnvironment shown in script below:
 # ACTION: Update the script below, before executing it, using the required parameters for your Region, Fqdn and Tenant name.
 .\_pre-req_Example_Connect_ARM.ps1
 
@@ -71,6 +72,7 @@ try{
 # -c100G -t32 -o64 -d4800 -w50 -Sh -Rxml
 
 # Standard_F16s has 16 x vCPUs and can have up to 64 x data disks.
+# Standard_F8s has 8 x vCPUs and can have up to 32 x data disks.
 # Max time for DSC extension is 90 minutes, allowing 10 minutes spare, results in 80 minutes, which is 4800 seconds.
 # Check Qutoas on Admin Portal for max resoruces allowed, cores, VMs, managed disks...etc
 # 50 x 10GB data disks = 1000GB = 500GB per VM
@@ -79,15 +81,18 @@ try{
 # Check Hub Compute Quotas before running the script, needs vCPU, VMs, Managed Disks resources
 # https://docs.microsoft.com/en-us/azure-stack/operator/azure-stack-quotas
 
+# Credentials for the VMs
+$cred = Get-Credential -UserName "admin" -Message "Admin credentials for the VMs"
+
 # Hub region name / location:
 $location = $((Get-AzLocation).location)
-# StorageEndpointSuffix, used for storage account blob creation:
-$storageEndpointSuffix = $((Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
+# Append StorageEndpointSuffix to "blob." for storage account blob creation if using Unmanaged disks (-UseUnmanagedDisks parameter):
+$storageEndpointSuffix = $("blob."+(Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
 
 # Start ARM-VMFleet, note: storage account name must be all lower case.
-.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 10 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F16s' `
-    -storageUrlDomain "blob.$storageEndpointSuffix" -testParams '-c100G -t32 -o64 -d4800 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
-     -resourceGroupNamePrefix 'VMfleet-' -password $cred.Password -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
+.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 75 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
+    -storageUrlDomain $storageEndpointSuffix -testParams '-c100G -t32 -o64 -d2700 -w75 -W900 -rs50 -Suw -D500 -Rxml' -dataDiskSizeGb 10 `
+     -resourceGroupNamePrefix 'VMfleet-' -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
      -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
 # VM deployment logs default to "C:\ARM-VMFleet-Logs\" on machine running the script.
