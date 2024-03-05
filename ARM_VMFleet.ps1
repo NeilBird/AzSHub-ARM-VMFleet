@@ -19,17 +19,17 @@
     # Requires authenticated session to Azure Stack Hub management (ARM) endpoint:
     .\_pre-req_Example_Connect_ARM.ps1
 
+    # Credentials for the VMs
+    $cred = Get-Credential -UserName "admin" -Message "Admin credentials for the VMs"
+
     # Hub region name / location:
     $location = $((Get-AzLocation).location)
-    # StorageEndpointSuffix, used for storage account blob creation:
-    $storageEndpointSuffix = $((Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
+    # Append StorageEndpointSuffix to "blob." for storage account blob creation if using Unmanaged disks (-UseUnmanagedDisks parameter):
+    $storageEndpointSuffix = $("blob."+(Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
     
-    # Create a credential object for the VMs:
-    $cred = Get-Credential -UserName "admin" -Message "VM Admin cred"
-    
-    # start ARM-VMFleet:
-    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 25 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
-        -storageUrlDomain "blob.$storageEndpointSuffix" -testParams '-c100G -t32 -o64 -d2700 -W900 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
+    # Start ARM-VMFleet, note: storage account name must be all lower case.
+    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 75 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
+        -storageUrlDomain $storageEndpointSuffix -testParams '-c100G -t32 -o64 -d2700 -w75 -W900 -rs50 -Suw -D500 -Rxml' -dataDiskSizeGb 10 `
         -resourceGroupNamePrefix 'VMfleet-' -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
         -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
