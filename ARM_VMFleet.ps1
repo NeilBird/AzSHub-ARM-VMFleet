@@ -2,9 +2,9 @@
 <#
 .SYNOPSIS
     Author:     Neil Bird, MSFT
-    Version:    0.4.5
+    Version:    0.4.6
     Created:    11th October 2022
-    Updated:    5th March 2024
+    Updated:    21st June 2024
 
 .DESCRIPTION
   
@@ -19,17 +19,17 @@
     # Requires authenticated session to Azure Stack Hub management (ARM) endpoint:
     .\_pre-req_Example_Connect_ARM.ps1
 
-    # Credentials for the VMs
-    $cred = Get-Credential -UserName "admin" -Message "Admin credentials for the VMs"
-
     # Hub region name / location:
     $location = $((Get-AzLocation).location)
-    # Append StorageEndpointSuffix to "blob." for storage account blob creation if using Unmanaged disks (-UseUnmanagedDisks parameter):
-    $storageEndpointSuffix = $("blob."+(Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
+    # StorageEndpointSuffix, used for storage account blob creation:
+    $storageEndpointSuffix = $((Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
     
-    # Start ARM-VMFleet, note: storage account name must be all lower case.
-    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 75 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
-        -storageUrlDomain $storageEndpointSuffix -testParams '-c100G -t32 -o64 -d2700 -w75 -W900 -rs50 -Suw -D500 -Rxml' -dataDiskSizeGb 10 `
+    # Create a credential object for the VMs:
+    $cred = Get-Credential -UserName "admin" -Message "VM Admin cred"
+    
+    # start ARM-VMFleet:
+    .\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 25 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
+        -storageUrlDomain "blob.$storageEndpointSuffix" -testParams '-c100G -t32 -o64 -d2700 -W900 -w50 -Sh -Rxml' -dataDiskSizeGb 10 `
         -resourceGroupNamePrefix 'VMfleet-' -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
         -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
@@ -161,7 +161,7 @@ if($initialise.IsPresent){
     Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Uploading DiskSpd.zip Archive" -PercentComplete 52 
     Set-AzStorageBlobContent -File $diskSpd -Blob 'DiskSpd.ZIP' -Container $artifactsContainerName -Context $resultsStdStore.Context -Verbose -Force -ErrorAction Stop
     # Remove write progress bar from Set-AzStorageBlobContent output
-    Write-Progress -Completed
+    Write-Progress -Activity "Initialising Subscirption Prerequisites" -Completed
     
     Write-Host "- creating key vault" -ForegroundColor Yellow
     Write-Progress -Activity "Initialising Subscirption Prerequisites" -Status "Creating Key Vault" -PercentComplete 58

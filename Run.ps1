@@ -90,8 +90,8 @@ $location = $((Get-AzLocation).location)
 $storageEndpointSuffix = $("blob."+(Get-AzEnvironment (Get-AzContext).Environment).StorageEndpointSuffix)
 
 # Start ARM-VMFleet, note: storage account name must be all lower case.
-.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 75 -pauseBetweenVmCreateInSeconds 5 -location $location -vmsize 'Standard_F8s' `
-    -storageUrlDomain $storageEndpointSuffix -testParams '-c100G -t32 -o64 -d2700 -w75 -W900 -rs50 -Suw -D500 -Rxml' -dataDiskSizeGb 10 `
+.\ARM_VMFleet.ps1 -initialise -cred $cred -totalVmCount 75 -pauseBetweenVmCreateInSeconds 10 -location $location -vmsize 'Standard_F8s' `
+    -storageUrlDomain $storageEndpointSuffix -testParams '-c100G -t32 -o64 -d2700 -w75 -W1200 -rs50 -Suw -D500 -Rxml' -dataDiskSizeGb 10 `
      -resourceGroupNamePrefix 'VMfleet-' -dontDeleteResourceGroupOnComplete -vmNamePrefix 'iotest' `
      -dataDiskCount 30 -resultsStorageAccountName 'vmfleetresults'
 
