@@ -524,7 +524,7 @@ for ($x = 1; $x -le $totalVmCount; $x++)
 Write-Host "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $totalVmCount x ARM VM Fleet Jobs created...." -ForegroundColor Green
 
 # Remove write progress bar, as all VMs have been created.
-Write-Progress -Completed
+Write-Progress -Activity "Deploying ARM VM Fleet:" -Completed
 
 Write-Host "`nInfo: Check the status of ARM VM Fleet jobs by reviewing VM log files in folder: $($logfilefolder)"
 Write-Host "Info: Check the User Portal for VMs CPU metrics."
